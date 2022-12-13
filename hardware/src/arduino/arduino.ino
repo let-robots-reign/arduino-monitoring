@@ -1,13 +1,9 @@
-// Copyright 2022 Zotov A. O.
-// Distributed under the GNU General Public License, Version 3.0. (See
-// accompanying file LICENSE)
-// INCLUDES
-// #include <ArduinoJson.h>
+#include <ArduinoJson.h>
 #include <SoftwareSerial.h>
-//////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////
 
 // SerialLink - bridge with NodeMCU
-// SoftwareSerial SerialLink(9, 10);  // RX, TX
+SoftwareSerial SerialLink(10, 11);  // RX, TX
 
 // JSON static capacity
 const int32_t capacity = 600;
@@ -30,7 +26,7 @@ byte DisplayPins[8] = {
     2, 3, 4, 5, 6, 7, 8, 9
 };
 
-//////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////
 
 void setup() {
     // Serial is used as debug (default: USB, 9600 bauds)
@@ -41,11 +37,9 @@ void setup() {
     }
 
     // SerialLink: 4800 bauds (less amount of errors)
-    //SerialLink.begin(4800);
-
-    //SerialLink.setTimeout(5000);
-
-    Serial.println("Iteration\tRaw temperature\tRaw brightness\tVoltage");
+    SerialLink.begin(4800);
+    SerialLink.setTimeout(5000);
+    Serial.println("Iteration\tRaw temperature\tRaw brightness");
 
     // Register seven-segment display
     for (auto i : DisplayPins) {
@@ -53,7 +47,7 @@ void setup() {
     }
 }
 
-//////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////
 
 void loop() {
     // Get current second
@@ -82,17 +76,18 @@ void loop() {
         Serial.print(temperature);
         Serial.print("\t\t");
         Serial.print(brightness);
+        Serial.print("\n");
 
         // Prepare JSON document
 
-        // StaticJsonDocument<capacity> package;
+        StaticJsonDocument<capacity> package;
 
-        // package["iteration"] = iteration;
-        // package["temperature"] = temperature;
-        // package["brightness"] = brightness;
+        package["iteration"] = iteration;
+        package["temperature"] = temperature;
+        package["brightness"] = brightness;
 
-        // // Send the JSON document over SerialLink
-        // serializeJson(package, SerialLink);
+        // Send the JSON document over SerialLink
+        serializeJson(package, SerialLink);
 
         sent_json = true;
 
