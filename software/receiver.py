@@ -7,6 +7,7 @@ from time import sleep
 from json import dumps, loads
 from datetime import date, datetime
 from math import log, log10
+from graph import update as update_plots
 ######################################################################
 # PRIVATE DATA
 
@@ -132,6 +133,7 @@ def main():
             continue
 
         logging.info(f'{datetime.now().time().replace(microsecond=0)} GOT MEASUREMENTS: {answer}')
+        update_plots(answer)
 
         sleep(10)
 
