@@ -130,6 +130,7 @@ def animate_plot(i, ip, time_x, temps_y, bright_y):
 
     time_x = time_x[-20:]
     temps_y = temps_y[-20:]
+    bright_y =  bright_y[-20:]
 
     ax_t.clear()
     ax_b.clear()
