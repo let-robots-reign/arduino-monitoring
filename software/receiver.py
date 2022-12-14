@@ -1,24 +1,35 @@
-from os import system
-from sys import stdout
-import requests
-import subprocess
 import logging
-from time import sleep
-from json import dumps, loads
+import subprocess
 from datetime import date, datetime
+from json import loads
 from math import log, log10
-from graph import update as update_plots
+from sys import stdout
+
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import requests
+
 ######################################################################
 # PRIVATE DATA
 
-MAC_ADDRESS = "${mac}"
-TOKEN = '${token}'
+# MAC_ADDRESS = "${mac}"
+# TOKEN = '${token}'
+MAC_ADDRESS = "44:17:93:11:2F:DB"
+TOKEN = "Token 1234"
 
 ######################################################################
 # GlOBAL DATA
 
-RECEIVER_MODE = "TUNNEL"  # LOCAL or TUNNEL
+RECEIVER_MODE = "LOCAL"  # LOCAL or TUNNEL
 
+######################################################################
+# PLOT DATA
+
+fig, (ax_t, ax_b) = plt.subplots(2)
+fig.suptitle('Monitoring')
+time_x = []
+temps_y = []
+brightness_y = []
 ######################################################################
 # We search for dynamic IP of specific MAC address
 
@@ -30,7 +41,7 @@ def get_ip_by_mac(macaddr):
         # for i in range (0, 255):
         #    system(f"ping 192.168.0.{i}")
 
-        cmd = f'arp -a | findstr "{macaddr}" '
+        cmd = f'arp -a | findstr "{macaddr.replace(":", "-").lower()}" '
 
         returned_output = subprocess.check_output(
             (cmd), shell=True, stderr=subprocess.STDOUT)
@@ -70,13 +81,13 @@ def request_update(ipaddr):
 def normalize(answer):
     # Convert raw temperature data to Celsius degrees
     normalized_temperature = 1 / \
-        (log((answer["temperature"] * 5.0 / 1023.0) / 2.5) /
+        (log((answer["temperature"] * 0.5 * 5.0 / 1023.0) / 2.5) /
          4300.0 + 1.0 / 298.0) - 273.0
 
     # Convert raw brightness data to lux
 
     normalized_brightness = pow(10, (log10(
-        20000 / ((answer["brightness"] * 10000) / (1024 - answer["brightness"]))) / 0.37))
+        20000 / ((answer["brightness"] * 0.5 * 10000) / (1024 - answer["brightness"] * 0.5))) / 0.37))
 
     # Round and save
     answer["temperature"] = round(normalized_temperature, 2)
@@ -96,8 +107,8 @@ def get_data(ip):
 
         answer = normalize(loads(answer))
 
-        # logging.info(
-        #     f'{datetime.now().time().replace(microsecond=0)} Normalized data: {answer}')
+        logging.info(
+            f'{datetime.now().time().replace(microsecond=0)} Normalized data: {answer}')
 
         return answer
 
@@ -105,6 +116,39 @@ def get_data(ip):
 
 ######################################################################
 
+
+def animate_plot(i, ip, time_x, temps_y, bright_y):
+    time_x.append(datetime.now().strftime('%H:%M:%S'))
+
+    answer = get_data(ip)
+    if not answer:
+        return
+
+    logging.info(f'{datetime.now().time().replace(microsecond=0)} GOT MEASUREMENTS: {answer}')
+    temps_y.append(answer["temperature"])
+    bright_y.append(answer["brightness"])
+
+    time_x = time_x[-20:]
+    temps_y = temps_y[-20:]
+
+    ax_t.clear()
+    ax_b.clear()
+    ax_t.plot(time_x, temps_y)
+    ax_b.plot(time_x, bright_y)
+
+    # Format plot
+    ax_t.tick_params('x', labelrotation=45)
+    ax_t.set_title('Temperatures')
+    ax_t.set_ylabel('Temperature (deg C)')
+
+    ax_b.tick_params('x', labelrotation=45)
+    ax_b.set_title('Brightness')
+    ax_b.set_ylabel('Brightness (lux)')
+
+    fig.tight_layout()
+    plt.subplots_adjust(bottom=0.30)
+
+######################################################################
 
 def main():
     dn = date.today()
@@ -127,15 +171,8 @@ def main():
     logging.info(
         f'{datetime.now().time().replace(microsecond=0)} Starting for IP: {IP_ADDRESS}')
 
-    while True:
-        answer = get_data(IP_ADDRESS)
-        if not answer:
-            continue
-
-        logging.info(f'{datetime.now().time().replace(microsecond=0)} GOT MEASUREMENTS: {answer}')
-        update_plots(answer)
-
-        sleep(10)
+    ani = animation.FuncAnimation(fig, animate_plot, fargs=(IP_ADDRESS, time_x, temps_y, brightness_y), interval=10000)
+    plt.show()
 
 ######################################################################
 
